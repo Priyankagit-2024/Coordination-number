@@ -1,0 +1,66 @@
+from ase.io import read
+import numpy as np
+
+# Read structure
+atoms = read("CONTCAR")
+
+symbols = atoms.get_chemical_symbols()
+positions = atoms.get_positions()
+cell = atoms.get_cell()
+
+# Cutoffs (Å)
+cutoff_CuCu = 2.81
+cutoff_CuO  = 2.25
+cutoff_CuN  = 2.20
+cutoff_CuS  = 2.30
+
+# Distance function with PBC
+def distance(i, j):
+    d = positions[i] - positions[j]
+    d -= np.round(np.linalg.solve(cell.T, d)) @ cell
+    return np.linalg.norm(d)
+
+# Output file
+f = open("Cu_coordination.txt","w")
+
+for i, sym_i in enumerate(symbols):
+
+    if sym_i == "Cu":
+
+        cn_O = 0
+        cn_N = 0
+        cn_S = 0
+        cn_Cu = 0
+
+        for j, sym_j in enumerate(symbols):
+
+            if i == j:
+                continue
+
+            d = distance(i,j)
+
+            if sym_j == "O" and d <= cutoff_CuO:
+                cn_O += 1
+
+            elif sym_j == "N" and d <= cutoff_CuN:
+                cn_N += 1
+
+            elif sym_j == "S" and d <= cutoff_CuS:
+                cn_S += 1
+
+            elif sym_j == "Cu" and d <= cutoff_CuCu:
+                cn_Cu += 1
+
+        total = cn_O + cn_N + cn_S + cn_Cu
+
+        f.write(f"Cu atom index {i+1}:\n")
+        f.write(f"  Cu-O CN = {cn_O}\n")
+        f.write(f"  Cu-N CN = {cn_N}\n")
+        f.write(f"  Cu-S CN = {cn_S}\n")
+        f.write(f"  Cu-Cu CN = {cn_Cu}\n")
+        f.write(f"  Total CN = {total}\n")
+        f.write("------------------\n")
+
+f.close()
+
+print("Output written to Cu_coordination.txt")
